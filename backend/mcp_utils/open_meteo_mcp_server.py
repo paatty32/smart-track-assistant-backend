@@ -2,11 +2,14 @@ import logging
 
 import httpx
 from mcp.server import FastMCP
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from domain.TrainingPlan import TrainingPlan
 from domain.TrainingPlanCreate import TrainingPlanCreate
+from domain.db_utils import plan_fingerprint
 
 URL = "https://api.open-meteo.com/v1/forecast"
 params = {
@@ -36,17 +39,24 @@ def getWeather():
     response = httpx.get(URL, params=params)
     return response.text
 
-async def insert_training_plan(session: AsyncSession, training_plan: TrainingPlanCreate):
-    plan = TrainingPlan(**training_plan.model_dump())
+async def insert_training_plan(session: AsyncSession, training_plan: TrainingPlanCreate, fingerprint: str):
+    plan = TrainingPlan(**training_plan.model_dump(), fingerprint=fingerprint)
     logger.info(f"Plan to add {plan}")
     session.add(plan)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        existing = await session.scalar(select(TrainingPlan).where(TrainingPlan.fingerprint == fingerprint))
+        return {
+            "status": "already_exists",
+            "id": existing.id
+        }
     logger.info(f"End inserting training plan {training_plan}")
     await session.refresh(plan)
     return {
         "id": plan.id,
-        "date": plan.datum,
-        "weather": plan.weather,
+        "status": "created",
     }
 
 
@@ -58,10 +68,27 @@ def getWeatherTool():
 @weather_mcp.tool()
 async def insertTrainingPlan(training_plan: TrainingPlanCreate):
 
+    fingerprint = plan_fingerprint(training_plan)
+
     async with async_session() as session:
         try:
+            existing = await session.scalar(
+                select(TrainingPlan).where(
+                    TrainingPlan.fingerprint == fingerprint
+                )
+            )
+
+            if existing:
+                return {
+                    "status": "already_exists",
+                    "id": existing.id
+                }
+
+
+
+
             logger.info(f"Start inserting training plan {training_plan}")
-            return await insert_training_plan(session, training_plan)
+            return await insert_training_plan(session, training_plan, fingerprint)
         except Exception:
             await session.rollback()
             raise
