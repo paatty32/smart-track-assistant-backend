@@ -23,8 +23,6 @@ params = {
 }
 
 DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/smartAssistantDb"
-#Globale Enginge
-#engine = create_engine(DATABASE_URL, echo=True)
 
 enginne = create_async_engine(DATABASE_URL, echo=True)
 
@@ -84,31 +82,11 @@ async def insertTrainingPlan(training_plan: TrainingPlanCreate):
                     "id": existing.id
                 }
 
-
-
-
             logger.info(f"Start inserting training plan {training_plan}")
             return await insert_training_plan(session, training_plan, fingerprint)
         except Exception:
             await session.rollback()
             raise
-#
-# @weather_mcp.tool()
-# async def create_training_plan(
-#     datum: date,
-#     wetter: str,
-#     aufwaermen: str,
-#     hauptteil: str,
-# ) -> TrainingPlanCreate:
-#     plan = TrainingPlanCreate(
-#         datum=datum,
-#         wetter=wetter,
-#         aufwaermen=aufwaermen,
-#         hauptteil=hauptteil,
-#     )
-#     return plan
-
-
 
 def main():
     weather_mcp.run(transport="streamable-http")
