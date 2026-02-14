@@ -25,14 +25,16 @@ def build_query_engine():
     # rebuild storage context
     logger.info("START - Loading Index")
     print(PERSIST_DIR)
-    index = None
 
     try:
         storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
+        logger.info(f"{PERSIST_DIR} directory")
         # load index
-        index = load_index_from_storage(storage_context)
+        index = load_index_from_storage(storage_context, embed_model=ollama_embedding)
     except Exception as e:
+        import traceback
         logger.error(f"Fehler beim laden des Index: {e}")
+        logger.error(traceback.format_exc())
         index = None
 
     if index is None:
