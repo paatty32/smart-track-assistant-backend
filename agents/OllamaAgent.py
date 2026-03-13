@@ -27,7 +27,6 @@ Wetter
 Einheit:
 Aufwärmen: [Stichpunkte]
 Hauptteil: [Stichpunkte]
-Aufgaben:
 
 Analysiere Wetterdaten für den angegebenen Tag.
 Identifiziere Trainingsschwerpunkte und plane entsprechende Einheiten.
