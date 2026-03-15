@@ -1,17 +1,17 @@
-import subprocess
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from llama_index.core.agent import AgentStream
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from llama_index.core.workflow import Context
 
 from agents.OllamaAgent import createOllamaAgent
 from database.databaseConnector import get_enginge, create_tables
+from deps import get_agent, get_context
 from mcp_utils.mcp_client import get_weather_tools
 from vectorStoreIndex.vectorStoreIndex import build_query_engine, build_index_tool
 
-mcp_process: subprocess.Popen | None = None
+import uvicorn
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,6 +29,8 @@ async def lifespan(app: FastAPI):
     #Agent initialisieren
     agent = createOllamaAgent(tools, index_tool)
     print("Agent fertig initialisiert")
+    #Context erstellen
+    agent_ctx = Context(agent)
 
     #Datenbank connection
     print("Datenbank Connection")
@@ -39,28 +41,18 @@ async def lifespan(app: FastAPI):
 
     ##state globaler Speicher
     app.state.agent = agent
+    app.state.context = agent_ctx
 
     # App läuft
     yield
 
-    print("Beende MCP Server...")
-    if mcp_process.poll() is None:
-        mcp_process.terminate()
-        mcp_process.wait()
-    print("MCP Server beendet")
-
 app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket,
+                             ollamaAgent=Depends(get_agent),
+                             context=Depends(get_context)):
     await websocket.accept()
-
-    ollamaAgent = websocket.app.state.agent
-
-    if not hasattr(websocket, "context"):
-        websocket.context = Context(ollamaAgent)
-
-    context = websocket.context
 
     try:
         while True:
@@ -85,5 +77,4 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("main:app", host="localhost", port=8001, reload=True)
