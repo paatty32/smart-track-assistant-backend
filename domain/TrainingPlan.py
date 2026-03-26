@@ -10,3 +10,5 @@ class TrainingPlan(SQLModel, table=True):
     wetter: str
     aufwaermen: str
     hauptteil: str
+    fingerprint: str = Field(unique=True, nullable=False)
+
