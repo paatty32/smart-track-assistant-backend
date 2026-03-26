@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -10,15 +11,18 @@ from agents.mcp_agents import create_agent
 from database.databaseConnector import get_enginge, create_tables
 from utils.cli import parse_args
 from utils.deps import get_agent, get_context
-from mcp_utils.mcp_client import get_weather_tools
+from mcp_utils.mcp_client import get_smart_track_assistant_tools
 from utils.settings import get_settings
 from vectorStoreIndex.vectorStoreIndex import build_query_engine, build_index_tool
 
 import uvicorn
 
+logging.basicConfig(format='%(asctime)s - %(module)s - %(funcName)s: %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starte MCP Server...")
+    logger.info("Starte MCP Server...")
     load_dotenv()
 
     settings = get_settings()
@@ -27,27 +31,27 @@ async def lifespan(app: FastAPI):
     args = parse_args()
 
     #Tools vom MCP laden
-    tools = await get_weather_tools()
-    print("Tools: ", tools)
+    tools = await get_smart_track_assistant_tools()
+    logger.info(f"Tools: {tools}")
 
-    print("Initialisiere Vector Index...")
+    logger.info("Initialisiere Vector Index...")
     query_engine = build_query_engine(args)
     index_tool = build_index_tool(query_engine)
 
-    print("Initialisiere Agent..")
+    logger.info("Initialisiere Agent..")
     #Agent initialisieren
     agent = create_agent(tools, index_tool, args, settings)
-    print("Agent fertig initialisiert")
+    logger.info("Agent fertig initialisiert")
     #Context erstellen
     agent_ctx = Context(agent)
 
     #Datenbank connection
-    print("Datenbank Connection")
+    logger.info("Datenbank Connection")
     #TODO: Auslagern in den MCP server
     enginge = get_enginge()
     create_tables(enginge)
 
-    print("Datenbank Connection fertig")
+    logger.info("Datenbank Connection fertig")
 
     ##state globaler Speicher
     app.state.agent = agent
@@ -67,7 +71,7 @@ async def websocket_endpoint(websocket: WebSocket,
     try:
         while True:
             data = await websocket.receive_text()
-            print("Received: ", data)
+            logger.info("Received: ", data)
             response = ollamaAgent.run(user_msg=data, ctx=context)
 
             #Agent-Schicht:
@@ -80,10 +84,10 @@ async def websocket_endpoint(websocket: WebSocket,
             state = await context.store.get("")
             if state and "plan" in state:
                 pending_plan = state["plan"]
-                print("Neuer Trainingsplan im Context", pending_plan)
+                logger.info("Neuer Trainingsplan im Context", pending_plan)
 
     except WebSocketDisconnect:
-        print("Disconnected")
+        logger.info("Disconnected")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="localhost", port=8001, reload=True)

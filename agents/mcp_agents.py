@@ -5,8 +5,6 @@ from llama_index.core.agent import FunctionAgent
 from llama_index.llms.ollama import Ollama
 from llama_index.llms.openai import OpenAI
 
-
-logging.basicConfig(format='%(asctime)s - %(module)s - %(funcName)s: %(message)s', level=logging.INFO)
 #Eigener Logger für das Python Modul. __name__ = name des Python Moduls
 logger = logging.getLogger(__name__)
 
