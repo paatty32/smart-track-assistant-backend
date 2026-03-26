@@ -1,14 +1,17 @@
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
 from llama_index.core.agent import AgentStream
 from starlette.websockets import WebSocket, WebSocketDisconnect
 from llama_index.core.workflow import Context
 
-from agents.OllamaAgent import createOllamaAgent
+from agents.mcp_agents import create_agent
 from database.databaseConnector import get_enginge, create_tables
-from deps import get_agent, get_context
+from utils.cli import parse_args
+from utils.deps import get_agent, get_context
 from mcp_utils.mcp_client import get_weather_tools
+from utils.settings import get_settings
 from vectorStoreIndex.vectorStoreIndex import build_query_engine, build_index_tool
 
 import uvicorn
@@ -16,24 +19,31 @@ import uvicorn
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starte MCP Server...")
+    load_dotenv()
+
+    settings = get_settings()
+
+    #CLI holen.
+    args = parse_args()
 
     #Tools vom MCP laden
     tools = await get_weather_tools()
     print("Tools: ", tools)
 
     print("Initialisiere Vector Index...")
-    query_engine = build_query_engine()
+    query_engine = build_query_engine(args)
     index_tool = build_index_tool(query_engine)
 
     print("Initialisiere Agent..")
     #Agent initialisieren
-    agent = createOllamaAgent(tools, index_tool)
+    agent = create_agent(tools, index_tool, args, settings)
     print("Agent fertig initialisiert")
     #Context erstellen
     agent_ctx = Context(agent)
 
     #Datenbank connection
     print("Datenbank Connection")
+    #TODO: Auslagern in den MCP server
     enginge = get_enginge()
     create_tables(enginge)
 
@@ -74,7 +84,6 @@ async def websocket_endpoint(websocket: WebSocket,
 
     except WebSocketDisconnect:
         print("Disconnected")
-
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="localhost", port=8001, reload=True)
