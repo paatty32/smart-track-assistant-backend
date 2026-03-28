@@ -71,7 +71,7 @@ async def websocket_endpoint(websocket: WebSocket,
     try:
         while True:
             data = await websocket.receive_text()
-            logger.info("Received: ", data)
+            logger.info(f"Received: {data}")
             response = ollamaAgent.run(user_msg=data, ctx=context)
 
             #Agent-Schicht:
@@ -84,7 +84,7 @@ async def websocket_endpoint(websocket: WebSocket,
             state = await context.store.get("")
             if state and "plan" in state:
                 pending_plan = state["plan"]
-                logger.info("Neuer Trainingsplan im Context", pending_plan)
+                logger.info(f"Neuer Trainingsplan im Context: {pending_plan}")
 
     except WebSocketDisconnect:
         logger.info("Disconnected")
