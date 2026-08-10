@@ -8,7 +8,6 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 from llama_index.core.workflow import Context
 
 from agents.mcp_agents import create_agent
-from database.databaseConnector import get_enginge, create_tables
 from utils.cli import parse_args
 from utils.deps import get_agent, get_context
 from mcp_utils.mcp_client import get_smart_track_assistant_tools
@@ -44,14 +43,6 @@ async def lifespan(app: FastAPI):
     logger.info("Agent fertig initialisiert")
     #Context erstellen
     agent_ctx = Context(agent)
-
-    #Datenbank connection
-    logger.info("Datenbank Connection")
-    #TODO: Auslagern in den MCP server
-    enginge = get_enginge()
-    create_tables(enginge)
-
-    logger.info("Datenbank Connection fertig")
 
     ##state globaler Speicher
     app.state.agent = agent
