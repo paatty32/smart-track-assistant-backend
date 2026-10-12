@@ -72,11 +72,6 @@ async def websocket_endpoint(websocket: WebSocket,
 
             await websocket.send_text("[DONE]")
 
-            state = await context.store.get("")
-            if state and "plan" in state:
-                pending_plan = state["plan"]
-                logger.info(f"Neuer Trainingsplan im Context: {pending_plan}")
-
     except WebSocketDisconnect:
         logger.info("Disconnected")
 
