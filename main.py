@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket,
-                             ollamaAgent=Depends(get_agent),
+                             agent=Depends(get_agent),
                              context=Depends(get_context)):
     await websocket.accept()
 
@@ -63,7 +63,7 @@ async def websocket_endpoint(websocket: WebSocket,
         while True:
             data = await websocket.receive_text()
             logger.info(f"Received: {data}")
-            response = ollamaAgent.run(user_msg=data, ctx=context)
+            response = agent.run(user_msg=data, ctx=context)
 
             #Agent-Schicht:
             async for r in response.stream_events():
